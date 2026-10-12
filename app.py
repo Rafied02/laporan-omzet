@@ -292,7 +292,7 @@ def laporan_harian(df, pilih, akhir, stores):
     semua = pilih == "SEMUA STORE"
     dd = df if semua else df[df["Store"] == pilih]
     nama = "Seluruh Store" if semua else f"Store {pilih}"
-    st.markdown(f'<div class="banner"><h1>Laporan Harian</h1><p>{nama} | Data terbaru s.d. {akhir:%d/%m/%Y}</p></div>',
+    st.markdown(f'<div class="banner"><h1>HELIOS - Laporan Harian</h1><p>{nama} | Data terbaru s.d. {akhir:%d/%m/%Y}</p></div>',
                 unsafe_allow_html=True)
     tgl = st.date_input("Tanggal laporan", value=akhir.date(), min_value=df["Tgl"].min().date(), max_value=akhir.date())
     t = pd.Timestamp(tgl)
