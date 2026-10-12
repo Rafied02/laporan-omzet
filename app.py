@@ -25,7 +25,7 @@ if not exists():
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTknFFShtKKmsiLiH1IKhD9rARIlN68NUWdOrFiQc42X2jdAGemNg9L_NwBbb60osXL-m_1PIPAB_hF/pubhtml"
 
 # Password (opsional). Kosongkan jika tidak perlu. Di Streamlit Cloud lebih aman lewat Secrets: APP_PASSWORD = "..."
-APP_PASSWORD = "helios2026"
+APP_PASSWORD = ""
 
 BLN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
 PAL = ["#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B3", "#937860"]
@@ -108,7 +108,8 @@ def metrik(x):
     sad, cg, n = x["SAD"].sum(), x["COGS"].sum(), x["Nota"].nunique()
     return {"Sales Netto": x["Netto"].sum(), "Jumlah nota": n, "Item terjual": x["Qty"].sum(),
             "Rata-rata per nota": x["Netto"].sum() / n if n else 0, "COGS": cg, "Laba kotor": sad - cg,
-            "Gross margin %": (sad - cg) / sad * 100 if sad else None, "Diskon": max(0, x["Bruto"].sum() - sad)}
+            "Gross margin %": (sad - cg) / sad * 100 if sad else None, "Diskon": max(0, x["Bruto"].sum() - sad),
+            "Bruto": x["Bruto"].sum(), "SAD": sad}
 
 
 def cek_password():
@@ -282,6 +283,136 @@ def lbl(x):
     return f"{BLN[x[1] - 1]} {x[0]}" if x else "-"
 
 
+def rata(ms, key):
+    v = [m[key] for m in ms if m[key] is not None]
+    return sum(v) / len(v) if v else None
+
+
+def laporan_harian(df, pilih, akhir, stores):
+    semua = pilih == "SEMUA STORE"
+    dd = df if semua else df[df["Store"] == pilih]
+    nama = "Seluruh Store" if semua else f"Store {pilih}"
+    st.markdown(f'<div class="banner"><h1>Laporan Harian</h1><p>{nama} | Data terbaru s.d. {akhir:%d/%m/%Y}</p></div>',
+                unsafe_allow_html=True)
+    tgl = st.date_input("Tanggal laporan", value=akhir.date(), min_value=df["Tgl"].min().date(), max_value=akhir.date())
+    t = pd.Timestamp(tgl)
+    st.subheader(f"{HARI[t.dayofweek]}, {t:%d/%m/%Y}")
+    if t.date() == akhir.date():
+        st.caption("Ini hari terakhir di data. Pastikan data hari tersebut sudah lengkap sebelum laporan dibagikan.")
+
+    def ringkas(x):
+        hist = [metrik(x[x["Tgl"] == t - pd.Timedelta(days=7 * i)]) for i in range(1, 5)]
+        return metrik(x[x["Tgl"] == t]), hist[0], [h for h in hist if h["Jumlah nota"] > 0]
+
+    awal_b = t.replace(day=1)
+    pb_end = awal_b - pd.Timedelta(days=1)
+    pb_start = pb_end.replace(day=1)
+    pb_sd = pb_start.replace(day=min(t.day, pb_end.day))
+
+    def mtd_of(x):
+        return (x.loc[(x["Tgl"] >= awal_b) & (x["Tgl"] <= t), "Netto"].sum(),
+                x.loc[(x["Tgl"] >= pb_start) & (x["Tgl"] <= pb_sd), "Netto"].sum())
+
+    m, mw, ada = ringkas(dd)
+    rt = rata(ada, "Sales Netto")
+    g_mw, g_rt = growth(m["Sales Netto"], mw["Sales Netto"]), (growth(m["Sales Netto"], rt) if rt else None)
+    if m["Jumlah nota"] == 0:
+        st.warning("Belum ada transaksi pada tanggal ini.")
+
+    st.header("1. Ringkasan Hari Ini")
+    kh = []
+    for nm_, fm in [("Sales Netto", rp), ("Jumlah nota", angka), ("Rata-rata per nota", rp), ("Item terjual", angka),
+                    ("Laba kotor", rp), ("Diskon", rp)]:
+        r_ = rata(ada, nm_)
+        kh.append((nm_, fm(m[nm_]), None,
+                   f"Minggu lalu: {fm(mw[nm_])} ({pct(growth(m[nm_], mw[nm_]))})<br>"
+                   f"Rata-rata 4 minggu: {fm(r_) if r_ is not None else 'n/a'} ({pct(growth(m[nm_], r_)) if r_ else 'n/a'})"))
+    kh.append(("Gross margin", pct(m["Gross margin %"], False), None, f"Minggu lalu: {pct(mw['Gross margin %'], False)}"))
+    grid(kh)
+
+    st.header("2. Akumulasi Bulan Berjalan (MTD)")
+    mtd, mtd_p = mtd_of(dd)
+    est = mtd / t.day * t.days_in_month
+    grid([(f"MTD {BLN[t.month - 1]} {t.year}", rp(mtd), None, f"Sampai tanggal {t.day}"),
+          (f"{BLN[pb_start.month - 1]} {pb_start.year} s.d. tanggal sama", rp(mtd_p), None, ""),
+          ("Pertumbuhan MTD", pct(growth(mtd, mtd_p)), None, "Dibanding bulan lalu"),
+          ("Estimasi omzet akhir bulan", rp(est), None, "Perkiraan kasar dari rata-rata harian")])
+
+    def peringatan(x, label):
+        out = []
+        m_, _, ada_ = ringkas(x)
+        r_ = rata(ada_, "Sales Netto")
+        if m_["Jumlah nota"] == 0:
+            if ada_:
+                out.append(f"{label}: belum ada transaksi pada tanggal ini, padahal biasanya ada.")
+            return out
+        if r_ and m_["Sales Netto"] < 0.7 * r_:
+            out.append(f"{label}: omzet {rp(m_['Sales Netto'])}, turun {pct(abs(growth(m_['Sales Netto'], r_)), False)} dari rata-rata hari yang sama 4 minggu terakhir.")
+        if ada_:
+            dp = sum(a["Diskon"] for a in ada_) / max(sum(a["Bruto"] for a in ada_), 1)
+            dn = m_["Diskon"] / m_["Bruto"] if m_["Bruto"] else 0
+            if dn > 1.5 * dp and dn - dp >= 0.02:
+                out.append(f"{label}: diskon {pct(dn * 100, False)} dari bruto, di atas biasanya ({pct(dp * 100, False)}).")
+            cp = sum(a["COGS"] for a in ada_) / max(sum(a["SAD"] for a in ada_), 1)
+            cn = m_["COGS"] / m_["SAD"] if m_["SAD"] else 0
+            if cn - cp >= 0.05:
+                out.append(f"{label}: COGS {pct(cn * 100, False)} dari Sales After Disc., di atas biasanya ({pct(cp * 100, False)}).")
+        return out
+
+    st.header("3. Peringatan")
+    notif = []
+    for s_ in (stores if semua else [pilih]):
+        notif += peringatan(dd[dd["Store"] == s_], f"Store {s_}")
+    if notif:
+        st.warning("\n".join("- " + n_ for n_ in notif))
+    else:
+        st.success("Tidak ada peringatan untuk tanggal ini.")
+    st.caption("Peringatan: omzet di bawah 70% rata-rata hari yang sama 4 minggu terakhir, diskon jauh di atas biasanya, "
+               "COGS naik 5 poin persentase atau lebih, atau belum ada data.")
+
+    baris_h = []
+    if semua:
+        st.header("4. Per Store")
+        for s_ in stores:
+            xs = dd[dd["Store"] == s_]
+            ms, msw, adas = ringkas(xs)
+            rs = rata(adas, "Sales Netto")
+            a_, b_ = mtd_of(xs)
+            baris_h.append({"StoreCode": s_, "Sales Netto": ms["Sales Netto"],
+                            "vs Minggu Lalu": growth(ms["Sales Netto"], msw["Sales Netto"]),
+                            "vs Rata-rata 4 Minggu": growth(ms["Sales Netto"], rs) if rs else None,
+                            "Nota": ms["Jumlah nota"], "Rata-rata per Nota": ms["Rata-rata per nota"],
+                            "Diskon %": (ms["Diskon"] / ms["Bruto"] * 100) if ms["Bruto"] else None,
+                            "MTD": a_, "MTD vs Bulan Lalu": growth(a_, b_)})
+        th = pd.DataFrame(baris_h).sort_values("Sales Netto", ascending=False)
+        st.dataframe(th.style.format({"Sales Netto": rp, "vs Minggu Lalu": pct, "vs Rata-rata 4 Minggu": pct, "Nota": angka,
+                                      "Rata-rata per Nota": rp, "Diskon %": lambda v: pct(v, False), "MTD": rp,
+                                      "MTD vs Bulan Lalu": pct}, na_rep="n/a"), use_container_width=True, hide_index=True)
+
+    if m["Jumlah nota"] > 0:
+        st.header("5. Rincian Hari Ini" if semua else "4. Rincian Hari Ini")
+        dday = dd[dd["Tgl"] == t]
+        dday = dday.assign(Diskon=(dday["Bruto"] - dday["SAD"]).clip(lower=0))
+        c1, c2 = st.columns(2)
+        c1.plotly_chart(hbar("Omzet per Group", dday.groupby("Group")["Netto"].sum(), "#4C72B0"), use_container_width=True)
+        c2.plotly_chart(hbar("Metode Pembayaran", dday.groupby("Payment")["Netto"].sum(), "#DD8452"), use_container_width=True)
+        c1.plotly_chart(hbar("10 Menu Terlaris", dday.groupby("Menu")["Netto"].sum(), "#8172B3"), use_container_width=True)
+        c2.plotly_chart(hbar("10 Menu Paling Banyak Didiskon", dday.groupby("Menu")["Diskon"].sum(), "#C44E52"), use_container_width=True)
+
+    st.header("Teks Ringkasan (salin untuk WhatsApp/Telegram)")
+    tk = [f"LAPORAN HARIAN - {nama}", f"{HARI[t.dayofweek]}, {t:%d/%m/%Y}", "",
+          f"Sales Netto: {rp(m['Sales Netto'])} ({pct(g_mw)} vs minggu lalu; {pct(g_rt)} vs rata-rata 4 minggu)",
+          f"Nota: {angka(m['Jumlah nota'])} | Rata-rata per nota: {rp(m['Rata-rata per nota'])}",
+          f"Diskon: {rp(m['Diskon'])} | Laba kotor: {rp(m['Laba kotor'])} (margin {pct(m['Gross margin %'], False)})",
+          f"MTD: {rp(mtd)} ({pct(growth(mtd, mtd_p))} vs bulan lalu) | Estimasi akhir bulan: {rp(est)}"]
+    if semua:
+        tk += ["", "Per store:"] + [f"- {r_['StoreCode']}: {rp(r_['Sales Netto'])} ({pct(r_['vs Rata-rata 4 Minggu'])} vs rata-rata)"
+                                    for r_ in sorted(baris_h, key=lambda z: -z["Sales Netto"])]
+    if notif:
+        tk += ["", "Perlu perhatian:"] + ["- " + n_ for n_ in notif]
+    st.code("\n".join(tk), language=None)
+
+
 # ------------------------------------------------------------ SUMBER DATA
 cek_password()
 sumber = CSV_URL
@@ -325,7 +456,12 @@ P = Y - 1
 stores = sorted(df["Store"].unique())
 
 with st.sidebar:
+    halaman = st.radio("Halaman", ["Laporan Bulanan", "Laporan Harian"])
     pilih = st.selectbox("StoreCode", ["SEMUA STORE"] + stores)
+
+if halaman == "Laporan Harian":
+    laporan_harian(df, pilih, akhir, stores)
+    st.stop()
 
 d = df if pilih == "SEMUA STORE" else df[df["Store"] == pilih]
 nama = "Seluruh Store" if pilih == "SEMUA STORE" else f"Store {pilih}"
