@@ -364,7 +364,7 @@ b.plotly_chart(hbar(f"Omzet per Department ({Y})", S["dep"], "#55A868"), use_con
 a.plotly_chart(hbar(f"COGS per Group ({Y})", dy_.groupby("Group")["COGS"].sum(), "#C44E52"), use_container_width=True)
 b.plotly_chart(hbar(f"Metode Pembayaran ({Y})", S["pay"], "#DD8452"), use_container_width=True)
 
-st.header("5. Analisis Group, Department, dan Menu (Interaktif)")
+st.header("5. Analisis Group, Department, dan Menu")
 f1, f2, f3, f4 = st.columns(4)
 thn = f1.selectbox("Tahun", sorted(tahun, reverse=True))
 dm = d[d["Tahun"] == thn]
