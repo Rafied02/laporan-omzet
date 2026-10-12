@@ -399,7 +399,7 @@ def laporan_harian(df, pilih, akhir, stores):
         c1.plotly_chart(hbar("10 Menu Terlaris", dday.groupby("Menu")["Netto"].sum(), "#8172B3"), use_container_width=True)
         c2.plotly_chart(hbar("10 Menu Paling Banyak Didiskon", dday.groupby("Menu")["Diskon"].sum(), "#C44E52"), use_container_width=True)
 
-    st.header("Teks Ringkasan (salin untuk WhatsApp/Telegram)")
+    st.header("Ringkasan")
     tk = [f"LAPORAN HARIAN - {nama}", f"{HARI[t.dayofweek]}, {t:%d/%m/%Y}", "",
           f"Sales Netto: {rp(m['Sales Netto'])} ({pct(g_mw)} vs minggu lalu; {pct(g_rt)} vs rata-rata 4 minggu)",
           f"Nota: {angka(m['Jumlah nota'])} | Rata-rata per nota: {rp(m['Rata-rata per nota'])}",
