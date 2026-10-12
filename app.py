@@ -484,7 +484,7 @@ else:
 
 # ------------------------------------------------------------ TAMPILAN
 st.markdown(
-    '<div class="banner"><h1>Laporan Kinerja Omzet Penjualan</h1><p>'
+    '<div class="banner"><h1>HELIOS - Laporan Kinerja Omzet Penjualan</h1><p>'
     f"{nama} | Data {df['Tgl'].min():%d/%m/%Y} s.d. {akhir:%d/%m/%Y} | {len(stores)} store | "
     "Basis omzet: Sales Netto | Diperbarui otomatis tiap 5 menit</p></div>", unsafe_allow_html=True)
 
