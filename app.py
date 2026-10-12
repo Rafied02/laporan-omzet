@@ -611,7 +611,7 @@ a.plotly_chart(hbar(f"COGS per Group ({Y})", dy_.groupby("Group")["COGS"].sum(),
 b.plotly_chart(hbar(f"Metode Pembayaran ({Y})", S["pay"], "#DD8452"), use_container_width=True)
 
 tampil = None
-st.header("6. Analisis Group, Department, dan Menu (Interaktif)")
+st.header("6. Analisis Group, Department, dan Menu")
 f1, f2, f3, f4 = st.columns(4)
 thn = f1.selectbox("Tahun", sorted(tahun, reverse=True))
 dm = d[d["Tahun"] == thn]
