@@ -120,7 +120,7 @@ def cek_password():
         pass
     if not pw or st.session_state.get("ok"):
         return
-    st.markdown('<div class="banner"><h1>Laporan Kinerja Omzet Penjualan</h1><p>Masukkan password untuk melanjutkan</p></div>',
+    st.markdown('<div class="banner"><h1>HELIOS - Laporan Kinerja Omzet Penjualan</h1><p>Masukkan password untuk melanjutkan</p></div>',
                 unsafe_allow_html=True)
     x = st.text_input("Password", type="password")
     if x:
