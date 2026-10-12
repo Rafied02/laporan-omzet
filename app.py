@@ -25,7 +25,7 @@ if not exists():
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTknFFShtKKmsiLiH1IKhD9rARIlN68NUWdOrFiQc42X2jdAGemNg9L_NwBbb60osXL-m_1PIPAB_hF/pubhtml"
 
 # Password (opsional). Kosongkan jika tidak perlu. Di Streamlit Cloud lebih aman lewat Secrets: APP_PASSWORD = "..."
-APP_PASSWORD = ""
+APP_PASSWORD = "helios2026"
 
 BLN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
 PAL = ["#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B3", "#937860"]
