@@ -247,7 +247,7 @@ elif sumber:
         st.error(f"Gagal memuat dari Google Sheets: {e}\nAnda bisa mengunggah CSV manual di sidebar.")
         st.stop()
 else:
-    st.title("Laporan Kinerja Omzet Penjualan")
+    st.title("HELIOS - Laporan Kinerja Omzet Penjualan")
     st.info("Isi CSV_URL dengan link Publish to web (CSV) dari Google Sheets, atau unggah file CSV di sidebar.")
     st.stop()
 
