@@ -962,7 +962,7 @@ def halaman_bulanan(ctx: Konteks, pilih: str) -> None:
                                f"laporan_omzet_{lap.nama.replace(' ', '_')}.xlsx",
                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         except ImportError:
-            st.caption("Untuk ekspor Excel, instal dulu: pip install openpyxl")
+            st.caption("PT HELIOS NUSANTARA PERSADA")
 
 
 # ============================================================ 7. APLIKASI
